@@ -120,12 +120,12 @@ function(build_app app_name)
 endfunction()
 
 build_app(hello
-    SOURCES 
+    SOURCES
      main.c
 )
 
 build_app(bench_basic_a
-    SOURCES 
+    SOURCES
      bench_basic_a.c
 )
 
@@ -137,6 +137,13 @@ build_app(bench_basic_b
 build_app(framebuffer_test
     SOURCES
      framebuffer_test_a.c
+)
+
+build_app(dvd_bounce
+    SOURCES
+     dvd_bounce/main.c
+    LIBRARIES
+     sdl3
 )
 
 build_app(hardware_test
