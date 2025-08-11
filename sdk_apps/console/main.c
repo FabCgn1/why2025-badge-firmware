@@ -4,10 +4,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-#include <ctype.h>
 
-#define WINDOW_WIDTH 640
-#define WINDOW_HEIGHT 480
+#define WINDOW_WIDTH 700
+#define WINDOW_HEIGHT 700
 #define WIDTH 80
 #define HEIGHT 25
 #define new(T) ((T *)SDL_calloc (1, sizeof (T)))
@@ -22,11 +21,34 @@ struct state {
 	SDL_Window		*window;
 	SDL_Renderer	*renderer;
 	SDL_Texture		*font;
-	SDL_Texture		*framebuffer;
 	struct cell	 	 cells[WIDTH * HEIGHT];
 	uint8_t		 	 x, y;
 	bool			 debug;
 };
+
+static void draw_cell (
+	struct state *state,
+	int x,
+	int y,
+	struct cell cell,
+	SDL_Rect *vp
+) {
+	SDL_FRect sr, dr;
+
+	if (cell.glyph == 0)
+		return;
+
+	sr.x = (cell.glyph % 16) * 8.0f;
+	sr.y = (cell.glyph / 16) * 16.0f;
+	sr.w = 8.0f;
+	sr.h = 16.0f;
+	dr.x = (float)x / (float)WIDTH * (float)vp->w;
+	dr.y = (float)y / (float)HEIGHT * (float)vp->h;
+	dr.w = (float)vp->w / (float)WIDTH;
+	dr.h = (float)vp->h / (float)HEIGHT;
+
+	SDL_RenderTexture (state->renderer, state->font, &sr, &dr);
+}
 
 static bool set_cell (
 	struct state *state,
@@ -34,11 +56,16 @@ static bool set_cell (
 	int y,
 	struct cell cell
 ) {
+	SDL_Rect vp;
+
 	if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT)
 		return false;
 
 	state->cells[y * WIDTH + x] = cell;
 
+	SDL_GetRenderViewport (state->renderer, &vp);
+	draw_cell (state, x, y, cell, &vp);
+	SDL_RenderPresent (state->renderer);
 	return true;
 }
 
@@ -95,6 +122,7 @@ static void write_char (struct state *state, char ch)
 		scroll_up (state);
 }
 
+static void redraw (struct state *);
 static SDL_AppResult send_char (struct state *state, int ch)
 {
 	printf ("send_char(0x%02x);\n", ch);
@@ -104,6 +132,7 @@ static SDL_AppResult send_char (struct state *state, int ch)
 	case '\t':
 		state->debug = !state->debug;
 		printf ("debug: %d\n", state->debug);
+		redraw (state);
 		break;
 	default:
 		write_char (state, ch);
@@ -115,12 +144,8 @@ static SDL_AppResult send_char (struct state *state, int ch)
 static void redraw (struct state *state)
 {
 	SDL_Rect vp;
-	SDL_FRect sr, dr;
 	struct cell cell;
 
-	puts ("redrawing...");
-
-	SDL_SetRenderTarget (state->renderer, state->framebuffer);
 	SDL_RenderClear (state->renderer);
 
 	if (state->debug) {
@@ -129,28 +154,15 @@ static void redraw (struct state *state)
 	}
 
 	SDL_GetRenderViewport (state->renderer, &vp);
-	dr.w = (float)vp.w / (float)WIDTH;
-	dr.h = (float)vp.h / (float)HEIGHT;
-	sr.w = 8.0f;
-	sr.h = 16.0f;
+
 	for (int y = 0; y < HEIGHT; ++y) {
 		for (int x = 0; x < WIDTH; ++x) {
 			cell = state->cells[y * WIDTH + x];
-			if (cell.glyph == 0)
-				continue;
-			dr.x = (float)x / (float)WIDTH * vp.w;
-			dr.y = (float)y / (float)HEIGHT * vp.h;
-			sr.x = (cell.glyph % 16) * 8.0f;
-			sr.y = (cell.glyph / 16) * 16.0f;
-			if (!SDL_RenderTexture (state->renderer, state->font, &sr, &dr))
-				printf ("SDL_RenderTexture(): %s\n", SDL_GetError ());
+			draw_cell (state, x, y, cell, &vp);
 		}
 	}
 
 present:
-	SDL_SetRenderTarget (state->renderer, NULL);
-	SDL_RenderClear (state->renderer);
-	SDL_RenderTexture (state->renderer, state->framebuffer, NULL, NULL);
 	SDL_RenderPresent (state->renderer);
 }
 
@@ -204,6 +216,20 @@ SDL_AppResult SDL_AppInit (
 		return SDL_APP_FAILURE;
 	}
 
+	// Check display capabilities
+	SDL_DisplayID          display      = SDL_GetDisplayForWindow(state->window);
+	SDL_DisplayMode const *current_mode = SDL_GetCurrentDisplayMode(display);
+	if (current_mode) {
+		printf(
+				"Current display mode: %dx%d @%.2fHz, format: %s",
+				current_mode->w,
+				current_mode->h,
+				current_mode->refresh_rate,
+				SDL_GetPixelFormatName(current_mode->format)
+			  );
+	}
+
+
 	int ndrivers = SDL_GetNumRenderDrivers ();
 	for (int i = 0; i < ndrivers; ++i) {
 		printf ("driver %d: %s\n", i, SDL_GetRenderDriver (i));
@@ -214,12 +240,6 @@ SDL_AppResult SDL_AppInit (
 	state->renderer = SDL_CreateRenderer (state->window, NULL);
 	if (state->renderer == NULL) {
 		printf ("SDL_CreateRenderer(): %s\n", SDL_GetError ());
-		return SDL_APP_FAILURE;
-	}
-
-	state->framebuffer = SDL_CreateTexture (state->renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_TARGET, WIDTH * 8, HEIGHT * 16);
-	if (state->framebuffer == NULL) {
-		printf ("SDL_CreateTexture(): %s\n", SDL_GetError ());
 		return SDL_APP_FAILURE;
 	}
 
@@ -321,7 +341,7 @@ void SDL_AppQuit (
 															\
 	E(SDL_SCANCODE_NONUSHASH,	'\\',	'|',	-1)			\
 	E(SDL_SCANCODE_NONUSBACKSLASH,'\\',	'|',	-1)			\
-	E(SDL_SCANCODE_SPACE,		' ',	-1,	-1)				\
+	E(SDL_SCANCODE_SPACE,		' ',	' ',	-1)				\
 
 static int select_key (SDL_Keymod mod, int normal, int shift, int ctrl)
 {
@@ -369,10 +389,14 @@ SDL_AppResult SDL_AppEvent (
 		return SDL_APP_SUCCESS;
 	case SDL_EVENT_KEY_DOWN:
 		return handle_key_event (state, &event->key);
+	case SDL_EVENT_WINDOW_RESIZED:
+	case SDL_EVENT_WINDOW_MOVED:
+	case SDL_EVENT_WINDOW_MAXIMIZED:
+		redraw (state);
+		break;
 	default:
 		break;
 	}
-	redraw (state);
 	return SDL_APP_CONTINUE;
 }
 
