@@ -148,6 +148,13 @@ build_app(hello
 #     run_tests.c
 #)
 #
+build_app(console
+    SOURCES
+     main.c
+     cp437.c
+    LIBRARIES
+     sdl3
+)
 build_app(sdl_test
     SOURCES
      sdl_test.c
