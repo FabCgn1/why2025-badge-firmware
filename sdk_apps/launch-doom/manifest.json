@@ -1,0 +1,10 @@
+{
+    "unique_identifier": "launch-doom",
+    "name": "Launch DOOM",
+    "author": "Team:Badge",
+    "version": "1",
+    "interpreter": "",
+    "metadata_file": "",
+    "binary_path": "launch-doom.elf",
+    "source": 1
+}
