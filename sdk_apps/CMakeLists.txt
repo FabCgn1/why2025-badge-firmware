@@ -53,7 +53,7 @@ function(build_app app_name)
         endif()
     endforeach()
 
-    set(LIBRARY_FLAGS "")
+    set(LIBRARY_FLAGS "-L${APP_SOURCE_DIR}/${SOURCE}")
     if(APP_LIBRARIES)
         list(APPEND LIBRARY_FLAGS -L${SDK_LIB_DIR})
         foreach(LIB ${APP_LIBRARIES})

@@ -1,0 +1,12 @@
+#!/bin/sh
+
+name='rust_test'
+target='riscv32imafc-esp-espidf'
+export RUSTFLAGS="-C relocation-model=pic"
+cargo +nightly build					\
+	--release					\
+	--manifest-path rust_test/Cargo.toml		\
+	-Z build-std=std,panic_abort,panic_unwind,unwind	\
+	--target "$target"
+
+cp -f "rust_test/target/${target}/release/lib${name}.a" .

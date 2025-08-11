@@ -1,0 +1,10 @@
+{
+    "unique_identifier": "rust_test",
+    "name": "rust_test",
+    "author": "chonk",
+    "version": "1",
+    "interpreter": "",
+    "metadata_file": "",
+    "binary_path": "rust_test.elf",
+    "source": 1
+}
