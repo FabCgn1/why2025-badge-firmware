@@ -152,8 +152,7 @@ build_app(console
     SOURCES
      main.c
      cp437.c
-    LIBRARIES
-     sdl3
+     translate.c
 )
 build_app(sdl_test
     SOURCES
