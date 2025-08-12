@@ -259,11 +259,10 @@ static void hermes_do_connect() {
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = "WHY2025",
-            .password = "why",  
+            .ssid = CONFIG_WIFI_SSID,
+            .password = CONFIG_WIFI_PASSWORD,
         },
     };
-
 
     // esp_eap_client_set_identity((uint8_t *)EXAMPLE_EAP_ID, strlen(EXAMPLE_EAP_ID));
 
@@ -275,7 +274,7 @@ static void hermes_do_connect() {
 
     int retries = 10;
 again:
-    ESP_LOGW("HERMES", "Dialing...");
+    ESP_LOGW("HERMES", "Dialing to %s...", wifi_config.sta.ssid);
 
     esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     if (err != ESP_OK && retries) {

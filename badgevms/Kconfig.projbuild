@@ -29,5 +29,19 @@ menu "WHY2025 Custom Board Selection"
                 The screens have a black border where the ribbon cable is connected
     endchoice
 
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "WHY2025-open"
+        help
+            SSID of the WiFi network
+
+    config WIFI_PASSWORD
+        string "WiFi Password"
+        default ""
+        help
+            Password of the WiFi network
+
 endmenu
 
+
+# vim: set ts=4 sw=4 et:
