@@ -1,9 +1,0 @@
-[[apps]]
-name = "OTA"
-path = "APPS:[why2025_ota]why2025_ota.elf"
-restart_on_failure = false
-start_delay = 30
-start_every = 60
-stack_size = 8192
-args = ["--debug"]
-
