@@ -19,6 +19,8 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
+#include "esp_netif.h"
+#include "nvs.h"
 #include "freertos/FreeRTOS.h"
 #include "nvs_flash.h"
 #include "task.h"
@@ -190,11 +192,13 @@ static badgevms_wifi_connection_mode_t esp_phy_to_badgevms_mode(wifi_ap_record_t
 
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        ESP_LOGW(TAG, "WIFI_EVENT_STA_START: starting connect");
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_event_sta_disconnected_t *disc = (wifi_event_sta_disconnected_t *)event_data;
         if (status.connection_status_want != WIFI_DISCONNECTED) {
             status.connection_status = WIFI_DISCONNECTED;
-            ESP_LOGW(TAG, "unexpected wifi disconnect, reconnecting");
+            ESP_LOGW(TAG, "unexpected wifi disconnect (reason=%d), reconnecting", disc ? disc->reason : -1);
             if (s_retry_num < 10) {
                 esp_wifi_connect();
                 s_retry_num++;
@@ -255,7 +259,8 @@ static void hermes_do_connect() {
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = "WHY2025-open",
+            .ssid = "WHY2025",
+            .password = "why",  
         },
     };
 

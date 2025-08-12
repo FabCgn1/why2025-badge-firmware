@@ -21,3 +21,9 @@
 void        die(char const *reason);
 uint32_t    vaddr_to_paddr(uint32_t vaddr);
 char const *get_mac_address();
+uint64_t    get_unique_id();
+size_t      get_free_heap_bytes();
+size_t      get_psram_pages_free();
+size_t      get_psram_pages_total();
+size_t      get_framebuffer_pages_free();
+size_t      get_framebuffer_pages_total();

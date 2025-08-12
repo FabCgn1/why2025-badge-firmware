@@ -907,6 +907,12 @@ simple_function:
   - application_set_version
   - device_get
   - get_mac_address
+  - get_unique_id
+  - get_free_heap_bytes
+  - get_psram_pages_free
+  - get_psram_pages_total
+  - get_framebuffer_pages_free
+  - get_framebuffer_pages_total
   - get_num_tasks
   - get_screen_info
   - mkdir_p

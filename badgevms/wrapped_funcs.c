@@ -25,6 +25,7 @@
 #include "rom/uart.h"
 #include "task.h"
 #include "thirdparty/dlmalloc.h"
+#include "memory.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -654,6 +655,29 @@ char const *get_mac_address() {
     snprintf(mac_address_string, 18, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     return (char const *)&mac_address_string;
 }
+
+uint64_t get_unique_id() {
+    // Combine base MAC bytes into a 48-bit value and return as 64-bit ID
+    uint8_t mac[6] = {0};
+    esp_err_t ret  = esp_read_mac(mac, ESP_MAC_BASE);
+    if (ret != ESP_OK) {
+        return 0;
+    }
+    uint64_t id = 0;
+    for (int i = 0; i < 6; ++i) {
+        id = (id << 8) | mac[i];
+    }
+    return id;
+}
+
+size_t get_free_heap_bytes() {
+    return heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+}
+
+size_t get_psram_pages_free() { return get_free_psram_pages(); }
+size_t get_psram_pages_total() { return get_total_psram_pages(); }
+size_t get_framebuffer_pages_free() { return get_free_framebuffer_pages(); }
+size_t get_framebuffer_pages_total() { return get_total_framebuffer_pages(); }
 
 void wrapped_functions_init(void) {
     ESP_LOGI(TAG, "Initializing");
