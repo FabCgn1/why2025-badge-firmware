@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "esp_log.h"
+#include "pwm_control.h"
 #include "sys/queue.h"
 #include "soc/soc.h"
 #include "nvs_flash.h"
@@ -83,7 +84,6 @@ slave_state_t  slv_state_g;
 static QueueHandle_t meta_to_host_queue = NULL;
 static QueueHandle_t to_host_queue[MAX_PRIORITY_QUEUES] = {NULL};
 #endif
-
 
 static protocomm_t *pc_pserial;
 
@@ -185,6 +185,51 @@ static uint32_t get_capabilities_ext(void)
 
 	return ext_cap;
 }
+
+// Einfache Payload: [channel(1B)][duty_percent(1B)]
+// channel: 0 = Display (LEDC_CHANNEL_0), 1 = Keyboard (LEDC_CHANNEL_1)
+// duty_percent: 0..100 (set_pwm_duty_cycle() klemmt zusätzlich auf 0/10..80)
+static int pwm_endpoint_handler(uint32_t session_id,
+                                const uint8_t *inbuf, int inlen,
+                                uint8_t **outbuf, int *outlen,
+                                void *priv)
+{
+    (void)session_id;
+    (void)priv;
+
+    if (!inbuf || inlen < 2 || !outbuf || !outlen) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    uint8_t ch   = inbuf[0];
+    uint8_t duty = inbuf[1];
+
+    ledc_channel_t ledc_ch;
+    switch (ch) {
+        case 0: ledc_ch = LEDC_CHANNEL_0; break; // Display
+        case 1: ledc_ch = LEDC_CHANNEL_1; break; // Keyboard
+        default: return ESP_ERR_INVALID_ARG;
+    }
+
+    if (duty > 100) duty = 100;
+	if (ledc_ch == 0) {
+    pwm_set_display(duty);
+	} else {
+		pwm_set_keyboard(duty);
+	}
+	
+
+    // Kleine OK-Antwort zurückgeben (1 Byte)
+    uint8_t *resp = (uint8_t *)malloc(1);
+    if (!resp) return ESP_ERR_NO_MEM;
+    resp[0] = 0x00;            // 0 = OK
+    *outbuf = resp;
+    *outlen = 1;
+
+    return ESP_OK;
+}
+
+
 
 esp_err_t wlan_ap_rx_callback(void *buffer, uint16_t len, void *eb)
 {
@@ -847,49 +892,6 @@ static void register_reset_pin(uint32_t gpio_num)
 	}
 }
 
-void configure_pwm_timer(ledc_timer_t timer_num)
-{
-	ledc_timer_config_t timer_conf = {
-		.speed_mode = LEDC_LOW_SPEED_MODE,
-		.duty_resolution = PWM_TIMER_RESOLUTION,
-		.timer_num = timer_num,
-		.freq_hz = PWM_TIMER_FREQ_HZ,
-		.clk_cfg = PWM_TIMER_BASE_CLK
-	};
-	ESP_ERROR_CHECK(ledc_timer_config(&timer_conf));
-}
-
-void configure_pwm(int gpio_num, ledc_channel_t channel, ledc_timer_t timer_num) {
-	ledc_channel_config_t channel_conf = {
-		.gpio_num = gpio_num,
-		.speed_mode = LEDC_LOW_SPEED_MODE,
-		.channel = channel,
-		.intr_type = LEDC_INTR_DISABLE,
-		.timer_sel = timer_num,
-		.duty = 0, // Initial duty cycle
-		.hpoint = 0
-	};
-	ESP_ERROR_CHECK(ledc_channel_config(&channel_conf));
-}
-
-/// @brief set the pwm value and limit the duty to [0, 10-80]
-/// @param channel 
-/// @param duty_percentage 
-void set_pwm_duty_cycle(ledc_channel_t channel, int duty_percentage) {
-    uint32_t duty = (uint32_t)((1 << (PWM_TIMER_RESOLUTION)) * duty_percentage / 100);
-	// limit duty % to to 0, 10-80
-	if (duty < 10 && duty != 0)
-	{
-		duty = 10;
-	}
-	if (duty > 80)
-	{
-		duty = 80;
-	}
-	ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, channel, duty));
-	ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, channel));
-}
-
 void app_main()
 {
 	esp_err_t ret;
@@ -907,17 +909,11 @@ void app_main()
 	// gpio_reset_pin(GPIO_NUM_10);
 	// gpio_set_level(GPIO_NUM_10, 1);
 	
-	// configure a timer to use for 2 pwm outputs (display and keyboard backlight)
-	configure_pwm_timer(LEDC_TIMER_0);
-	// Configure PWM on GPIO 15, using timer 0, channel 0
-	configure_pwm(15, LEDC_CHANNEL_0, LEDC_TIMER_0);
-	// Set duty cycle to 10%
-	set_pwm_duty_cycle(LEDC_CHANNEL_0, 10);
-
-	// Configure PWM on GPIO 10, using timer 0, channel 1
-	configure_pwm(10, LEDC_CHANNEL_1, LEDC_TIMER_0);
-	// Set duty cycle to 50%
-	set_pwm_duty_cycle(LEDC_CHANNEL_1, 10);
+	// Init PWM
+	pwm_init();
+    // Optional different defaults:
+    pwm_set_display(1);
+    pwm_set_keyboard(100);
 
 	// end display and keyboard backlight
 
@@ -958,6 +954,14 @@ void app_main()
 		ESP_LOGE(TAG, "Failed to add enpoint");
 		return;
 	}
+
+	/*if (protocomm_add_endpoint(pc_pserial, "pwm", 
+				pwm_endpoint_handler, NULL) != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to add enpoint");
+		return; */
+
+	ESP_ERROR_CHECK(protocomm_add_endpoint(pc_pserial, "pwm", pwm_endpoint_handler, NULL));
+
 
 	protocomm_pserial_start(pc_pserial, serial_write_data, serial_read_data);
 

@@ -170,10 +170,18 @@ build_app(sdl_test
 #     curl_test.c
 #)
 #
-#build_app(bmi270_test
-#    SOURCES
-#     bmi270_test.c
-#)
+build_app(bmi270_test
+   SOURCES
+    bmi270_test.c
+)
+
+build_app(device_status
+   SOURCES
+    main.c
+    LIBRARIES
+     sdl3
+)
+
 
 #build_app(thread_test
 #    SOURCES
