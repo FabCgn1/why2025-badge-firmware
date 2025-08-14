@@ -1,0 +1,10 @@
+{
+    "unique_identifier": "set_brightness",
+    "name": "Set Brightness",
+    "author": "FabCgn1",
+    "version": "0.1",
+    "interpreter": "",
+    "metadata_file": "",
+    "binary_path": "set_brightness.elf",
+    "source": 1
+}

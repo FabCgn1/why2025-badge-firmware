@@ -912,8 +912,8 @@ void app_main()
 	// Init PWM
 	pwm_init();
     // Optional different defaults:
-    pwm_set_display(1);
-    pwm_set_keyboard(100);
+    pwm_set_display(10);
+    pwm_set_keyboard(10);
 
 	// end display and keyboard backlight
 
@@ -955,12 +955,13 @@ void app_main()
 		return;
 	}
 
-	/*if (protocomm_add_endpoint(pc_pserial, "pwm", 
+	if (protocomm_add_endpoint(pc_pserial, "pwm", 
 				pwm_endpoint_handler, NULL) != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to add enpoint");
-		return; */
+		return;
+	}
 
-	ESP_ERROR_CHECK(protocomm_add_endpoint(pc_pserial, "pwm", pwm_endpoint_handler, NULL));
+	//ESP_ERROR_CHECK(protocomm_add_endpoint(pc_pserial, "pwm", pwm_endpoint_handler, NULL));
 
 
 	protocomm_pserial_start(pc_pserial, serial_write_data, serial_read_data);
